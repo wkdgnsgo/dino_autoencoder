@@ -1,0 +1,7 @@
+torch
+torchvision
+timm
+tqdm
+wandb
+datasets
+accelerate
