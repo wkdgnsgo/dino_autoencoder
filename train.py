@@ -90,9 +90,10 @@ val_loader = DataLoader(val_dataset_hf, batch_size=BATCH_SIZE, shuffle=False, nu
 # --- 3. 모델, 손실 함수, 옵티마이저 초기화 ---
 if accelerator.is_main_process:
     print(f"Loading DINOv2 model: {DINOV2_MODEL_NAME} from torch.hub...")
-    # DINOv2 모델 로드 (torch.hub.load 사용)
-    dinov2_hub_model = torch.hub.load('facebookresearch/dinov2', DINOV2_MODEL_NAME)
-    dinov2_hub_model.eval() # DINOv2는 학습하지 않으므로 eval 모드로 고정
+# DINOv2 모델 로드 (torch.hub.load 사용)
+dinov2_hub_model = torch.hub.load('facebookresearch/dinov2', DINOV2_MODEL_NAME)
+dinov2_hub_model.eval().to(accelerator.device) # DINOv2는 학습하지 않으므로 eval 모드로 고정, 현재 장치로 이동
+if accelerator.is_main_process:
     print("DINOv2 model loaded.")
 
 accelerator.wait_for_everyone()
