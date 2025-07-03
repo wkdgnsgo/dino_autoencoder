@@ -30,14 +30,14 @@ accelerator = Accelerator()
 
 # WandB 초기화
 if accelerator.is_main_process:
-    wandb.init(project="dinov2-autoencoder-imagenet", config={
+    wandb.init(project="dinov2-autoencoder-imagenet", group="DINOv2_16_dim_Bottleneck", config={
         "batch_size": BATCH_SIZE,
         "num_epochs": NUM_EPOCHS,
         "learning_rate": LEARNING_RATE,
         "latent_dim": LATENT_DIM,
         "mlp_hidden_dim": MLP_HIDDEN_DIM,
         "dinov2_model": DINOV2_MODEL_NAME,
-        
+        "reconstruction_method": "DINOv2_16_dim_Bottleneck",
     })
 
 
