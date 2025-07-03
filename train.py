@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
@@ -19,7 +20,7 @@ from model import DINOv2Autoencoder, build_mlp
 # 하이퍼파라미터
 BATCH_SIZE = 64
 NUM_EPOCHS = 1000
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 5e-4
 LATENT_DIM = 16
 MLP_HIDDEN_DIM = 256
 DINOV2_MODEL_NAME = 'dinov2_vitb14' # DINOv2 모델 이름 (embed_dim=768)
@@ -111,7 +112,8 @@ if accelerator.is_main_process:
     wandb.config.update({"trainable_params": total_trainable_params})
 
 criterion = nn.MSELoss() # 재구성 손실 (Mean Squared Error)
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
 
 model, optimizer, train_loader, val_loader = accelerator.prepare(
     model, optimizer, train_loader, val_loader
@@ -191,6 +193,10 @@ for epoch in range(NUM_EPOCHS):
             if accelerator.is_main_process:
                 print(f"Logging input_output_images to WandB for epoch {epoch+1}")
                 wandb.log({"input_output_images": logged_images}, step=epoch)
+
+        # 스케줄러 업데이트
+        if accelerator.is_main_process:
+            scheduler.step(avg_val_loss)
 
         # 모델 저장 (validation loss 기준)
         if avg_val_loss < best_val_loss:
