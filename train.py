@@ -113,7 +113,7 @@ if accelerator.is_main_process:
 
 criterion = nn.MSELoss() # 재구성 손실 (Mean Squared Error)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
 
 model, optimizer, train_loader, val_loader = accelerator.prepare(
     model, optimizer, train_loader, val_loader
