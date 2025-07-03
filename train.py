@@ -25,7 +25,7 @@ MLP_HIDDEN_DIM = 256
 DINOV2_MODEL_NAME = 'dinov2_vitb14' # DINOv2 모델 이름 (embed_dim=768)
 
 # 디바이스 설정
-
+accelerator = Accelerator()
 
 # WandB 초기화
 if accelerator.is_main_process:
@@ -39,7 +39,7 @@ if accelerator.is_main_process:
         
     })
 
-accelerator = Accelerator()
+
 
 # --- 2. 데이터 로드 및 전처리 ---
 # DINOv2는 ImageNet 정규화를 사용합니다.
@@ -90,11 +90,12 @@ val_loader = DataLoader(val_dataset_hf, batch_size=BATCH_SIZE, shuffle=False, nu
 # --- 3. 모델, 손실 함수, 옵티마이저 초기화 ---
 if accelerator.is_main_process:
     print(f"Loading DINOv2 model: {DINOV2_MODEL_NAME} from torch.hub...")
-# DINOv2 모델 로드 (torch.hub.load 사용)
-dinov2_hub_model = torch.hub.load('facebookresearch/dinov2', DINOV2_MODEL_NAME)
-dinov2_hub_model.eval() # DINOv2는 학습하지 않으므로 eval 모드로 고정
-if accelerator.is_main_process:
+    # DINOv2 모델 로드 (torch.hub.load 사용)
+    dinov2_hub_model = torch.hub.load('facebookresearch/dinov2', DINOV2_MODEL_NAME)
+    dinov2_hub_model.eval() # DINOv2는 학습하지 않으므로 eval 모드로 고정
     print("DINOv2 model loaded.")
+
+accelerator.wait_for_everyone()
 
 model = DINOv2Autoencoder(
     dinov2_model=dinov2_hub_model,
