@@ -2,10 +2,11 @@
 
 #SBATCH --job-name=dinov2_autoencoder # create a short name for your job
 #SBATCH --nodes=1
+#SBATCH --nodelist=hpc-pr-a-pod14
 #SBATCH --ntasks-per-node=1 # total number of tasks per node
 #SBATCH --cpus-per-task=1 # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --gres=gpu:8 # number of gpus per node (matching --num_processes in accelerate launch)
-#SBATCH --time=60:00:00 # total run time limit (HH:MM:SS)
+#SBATCH --time=12:00:00 # total run time limit (HH:MM:SS)
 #SBATCH --output=dinov2_autoencoder.out
 #SBATCH --error=dinov2_autoencoder.err
 #SBATCH --mail-type=begin # send email when job begins

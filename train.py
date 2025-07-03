@@ -28,15 +28,16 @@ DINOV2_MODEL_NAME = 'dinov2_vitb14' # DINOv2 모델 이름 (embed_dim=768)
 
 
 # WandB 초기화
-wandb.init(project="dinov2-autoencoder-imagenet", config={
-    "batch_size": BATCH_SIZE,
-    "num_epochs": NUM_EPOCHS,
-    "learning_rate": LEARNING_RATE,
-    "latent_dim": LATENT_DIM,
-    "mlp_hidden_dim": MLP_HIDDEN_DIM,
-    "dinov2_model": DINOV2_MODEL_NAME,
-    
-})
+if accelerator.is_main_process:
+    wandb.init(project="dinov2-autoencoder-imagenet", config={
+        "batch_size": BATCH_SIZE,
+        "num_epochs": NUM_EPOCHS,
+        "learning_rate": LEARNING_RATE,
+        "latent_dim": LATENT_DIM,
+        "mlp_hidden_dim": MLP_HIDDEN_DIM,
+        "dinov2_model": DINOV2_MODEL_NAME,
+        
+    })
 
 accelerator = Accelerator()
 
@@ -51,11 +52,13 @@ transform = transforms.Compose([
 ])
 
 # Hugging Face datasets에서 ImageNet-1k 로드
-print("Loading ImageNet-1k dataset from Hugging Face Hub...")
+if accelerator.is_main_process:
+    print("Loading ImageNet-1k dataset from Hugging Face Hub...")
 # 'validation' split이 'val'로 명명되어 있을 수 있으니 확인 필요
 # ILSVRC/imagenet-1k는 'train'과 'validation' 스플릿을 가집니다.
 imagenet1k = load_dataset("ILSVRC/imagenet-1k")
-print("Dataset loaded.")
+if accelerator.is_main_process:
+    print("Dataset loaded.")
 
 # 데이터셋에 변환 함수 적용
 # datasets 라이브러리는 PIL Image를 반환하므로, torchvision.transforms를 적용합니다.
@@ -84,19 +87,14 @@ def collate_fn(batch):
 train_loader = DataLoader(train_dataset_hf, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True, collate_fn=collate_fn)
 val_loader = DataLoader(val_dataset_hf, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, collate_fn=collate_fn)
 
-model, optimizer, train_loader, val_loader = accelerator.prepare(
-    model, optimizer, train_loader, val_loader
-)
-
-print(f"Train dataset size: {len(train_dataset_hf)}")
-print(f"Validation dataset size: {len(val_dataset_hf)}")
-
 # --- 3. 모델, 손실 함수, 옵티마이저 초기화 ---
-print(f"Loading DINOv2 model: {DINOV2_MODEL_NAME} from torch.hub...")
+if accelerator.is_main_process:
+    print(f"Loading DINOv2 model: {DINOV2_MODEL_NAME} from torch.hub...")
 # DINOv2 모델 로드 (torch.hub.load 사용)
 dinov2_hub_model = torch.hub.load('facebookresearch/dinov2', DINOV2_MODEL_NAME)
 dinov2_hub_model.eval() # DINOv2는 학습하지 않으므로 eval 모드로 고정
-print("DINOv2 model loaded.")
+if accelerator.is_main_process:
+    print("DINOv2 model loaded.")
 
 model = DINOv2Autoencoder(
     dinov2_model=dinov2_hub_model,
@@ -106,11 +104,21 @@ model = DINOv2Autoencoder(
 
 # 학습 가능한 파라미터 수 확인 (DINOv2 제외)
 total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print(f"Total trainable parameters in Autoencoder (Bottleneck + Decoder): {total_trainable_params:,}")
-wandb.config.update({"trainable_params": total_trainable_params})
+if accelerator.is_main_process:
+    print(f"Total trainable parameters in Autoencoder (Bottleneck + Decoder): {total_trainable_params:,}")
+    wandb.config.update({"trainable_params": total_trainable_params})
 
 criterion = nn.MSELoss() # 재구성 손실 (Mean Squared Error)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+model, optimizer, train_loader, val_loader = accelerator.prepare(
+    model, optimizer, train_loader, val_loader
+)
+
+if accelerator.is_main_process:
+    print(f"Train dataset size: {len(train_dataset_hf)}")
+if accelerator.is_main_process:
+    print(f"Validation dataset size: {len(val_dataset_hf)}")
 
 # --- 4. 학습 및 검증 루프 ---
 for epoch in range(NUM_EPOCHS):
@@ -130,8 +138,9 @@ for epoch in range(NUM_EPOCHS):
         train_pbar.set_postfix(loss=loss.item())
 
     avg_train_loss = train_loss / len(train_loader)
-    print(f"Epoch {epoch+1} Training Loss: {avg_train_loss:.4f}")
-    wandb.log({"train_loss": avg_train_loss}, step=epoch)
+    if accelerator.is_main_process:
+        print(f"Epoch {epoch+1} Training Loss: {avg_train_loss:.4f}")
+        wandb.log({"train_loss": avg_train_loss}, step=epoch)
 
     # --- 검증 단계 ---
     model.eval()
@@ -152,8 +161,8 @@ for epoch in range(NUM_EPOCHS):
                 # 이미지 정규화 해제 (WandB 로깅을 위해)
                 # DINOv2 정규화: pixel = (pixel - mean) / std
                 # 역변환: pixel = pixel * std + mean
-                mean = torch.tensor([0.485, 0.456, 0.406]).to(DEVICE).view(1, 3, 1, 1)
-                std = torch.tensor([0.229, 0.224, 0.225]).to(DEVICE).view(1, 3, 1, 1)
+                mean = torch.tensor([0.485, 0.456, 0.406]).to(accelerator.device).view(1, 3, 1, 1)
+                std = torch.tensor([0.229, 0.224, 0.225]).to(accelerator.device).view(1, 3, 1, 1)
 
                 original_display = (images * std + mean).clamp(0, 1)
                 reconstructed_display = (reconstructed_images * std + mean).clamp(0, 1)
@@ -165,12 +174,14 @@ for epoch in range(NUM_EPOCHS):
                     logged_images.append(wandb.Image(reconstructed_display[i], caption=f"Epoch {epoch+1} - Reconstructed"))
         
     avg_val_loss = val_loss / len(val_loader)
-    print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}")
-    wandb.log({"val_loss": avg_val_loss}, step=epoch)
-    
-    # WandB에 이미지 로깅
-    if logged_images:
-        wandb.log({"input_output_images": logged_images}, step=epoch)
+    if accelerator.is_main_process:
+        print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}")
+        wandb.log({"val_loss": avg_val_loss}, step=epoch)
+        
+        # WandB에 이미지 로깅
+        if logged_images:
+            wandb.log({"input_output_images": logged_images}, step=epoch)
 
-print("Training finished!")
-wandb.finish()
+if accelerator.is_main_process:
+    print("Training finished!")
+    wandb.finish()
