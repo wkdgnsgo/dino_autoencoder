@@ -21,6 +21,9 @@ export MASTER_ADDR=$master_addr
 echo "MASTER_ADDR="$MASTER_ADDR
 
 # Uncomment and modify the following line if you need to activate a conda environment
+export WANDB_API_KEY=6647e6aba7e04a483792d9f831a14c8c4d45c8c9
+
+# Uncomment and modify the following line if you need to activate a conda environment
 # conda activate torch-env
 
-srun accelerate launch --multi_gpu --mixed_precision=fp16 --num_machines=1 --num_processes=8 --machine_rank=0 --main_process_port=29600 train.py
+srun accelerate launch --multi_gpu --mixed_precision=fp16 --num_machines=1 --num_processes=3 --machine_rank=0 --main_process_port=29600 train.py
