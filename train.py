@@ -193,7 +193,6 @@ for epoch in range(NUM_EPOCHS):
                 wandb.log({"input_output_images": logged_images}, step=epoch)
 
         # 모델 저장 (validation loss 기준)
-        global best_val_loss
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             output_dir = "./saved_models"
