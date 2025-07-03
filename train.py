@@ -17,8 +17,8 @@ from model import DINOv2Autoencoder, build_mlp
 
 # --- 1. 학습 설정 ---
 # 하이퍼파라미터
-BATCH_SIZE = 32
-NUM_EPOCHS = 10
+BATCH_SIZE = 64
+NUM_EPOCHS = 1000
 LEARNING_RATE = 1e-4
 LATENT_DIM = 16
 MLP_HIDDEN_DIM = 256
