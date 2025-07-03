@@ -18,9 +18,9 @@ from model import DINOv2Autoencoder, build_mlp
 
 # --- 1. 학습 설정 ---
 # 하이퍼파라미터
-BATCH_SIZE = 64
+BATCH_SIZE = 1024
 NUM_EPOCHS = 1000
-LEARNING_RATE = 5e-4
+LEARNING_RATE = 8e-3
 LATENT_DIM = 16
 MLP_HIDDEN_DIM = 256
 DINOV2_MODEL_NAME = 'dinov2_vitb14' # DINOv2 모델 이름 (embed_dim=768)
