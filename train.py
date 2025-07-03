@@ -123,6 +123,8 @@ if accelerator.is_main_process:
     print(f"Validation dataset size: {len(val_dataset_hf)}")
 
 # --- 4. 학습 및 검증 루프 ---
+best_val_loss = float('inf')
+
 for epoch in range(NUM_EPOCHS):
     # --- 학습 단계 ---
     model.train()
@@ -142,7 +144,9 @@ for epoch in range(NUM_EPOCHS):
     avg_train_loss = train_loss / len(train_loader)
     if accelerator.is_main_process:
         print(f"Epoch {epoch+1} Training Loss: {avg_train_loss:.4f}")
-        wandb.log({"train_loss": avg_train_loss}, step=epoch)
+        if accelerator.is_main_process:
+            print(f"Logging train_loss to WandB for epoch {epoch+1}")
+            wandb.log({"train_loss": avg_train_loss}, step=epoch)
 
     # --- 검증 단계 ---
     model.eval()
@@ -178,11 +182,30 @@ for epoch in range(NUM_EPOCHS):
     avg_val_loss = val_loss / len(val_loader)
     if accelerator.is_main_process:
         print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}")
-        wandb.log({"val_loss": avg_val_loss}, step=epoch)
+        if accelerator.is_main_process:
+            print(f"Logging val_loss to WandB for epoch {epoch+1}")
+            wandb.log({"val_loss": avg_val_loss}, step=epoch)
         
         # WandB에 이미지 로깅
         if logged_images:
-            wandb.log({"input_output_images": logged_images}, step=epoch)
+            if accelerator.is_main_process:
+                print(f"Logging input_output_images to WandB for epoch {epoch+1}")
+                wandb.log({"input_output_images": logged_images}, step=epoch)
+
+        # 모델 저장 (validation loss 기준)
+        global best_val_loss
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            output_dir = "./saved_models"
+            os.makedirs(output_dir, exist_ok=True)
+            accelerator.save_state(os.path.join(output_dir, f"best_model_epoch_{epoch+1}.pth"))
+            print(f"Saved best model at epoch {epoch+1} with validation loss: {best_val_loss:.4f}")
+
+        # 매 에폭마다 모델 저장
+        epoch_output_dir = "./saved_models/epochs"
+        os.makedirs(epoch_output_dir, exist_ok=True)
+        accelerator.save_state(os.path.join(epoch_output_dir, f"model_epoch_{epoch+1}.pth"))
+        print(f"Saved model for epoch {epoch+1}.")
 
 if accelerator.is_main_process:
     print("Training finished!")
