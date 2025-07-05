@@ -20,8 +20,8 @@ BATCH_SIZE = 1024
 NUM_EPOCHS = 1000
 LEARNING_RATE = 8e-3
 DINOV2_MODEL_NAME = 'dinov2_vitb14'
-VQGAN_CONFIG_PATH = "./logs/vqgan_imagenet_f16_16384/configs/model.yaml"
-VQGAN_CKPT_PATH = "./logs/vqgan_imagenet_f16_16384/checkpoints/last.ckpt"
+VQGAN_CONFIG_PATH = "./logs/vqgan_imagenet_f16_1024/configs/model.yaml"
+VQGAN_CKPT_PATH = "./logs/vqgan_imagenet_f16_1024/checkpoints/last.ckpt"
 
 
 accelerator = Accelerator()

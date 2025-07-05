@@ -66,8 +66,8 @@ class VQGANDecoderWithCrossAttention(nn.Module):
     def __init__(self, vqgan_config_path, vqgan_ckpt_path, dino_dim=768):
         super().__init__()
 
-        # VQGAN 모델 로드
-        model = self._load_vqgan(vqgan_config_path, vqgan_ckpt_path)
+        config = OmegaConf.load(vqgan_config_path)
+        model = self._load_vqgan(config, vqgan_ckpt_path)
         
         # VQGAN의 주요 컴포넌트 추출 (인코더 제외)
         self.quantize = model.quantize
@@ -75,7 +75,7 @@ class VQGANDecoderWithCrossAttention(nn.Module):
         self.post_quant_conv = model.post_quant_conv
         
         # 코드북 차원 가져오기
-        codebook_dim = self.quantize.e_dim
+        codebook_dim = config.model.params.embed_dim
 
         # DINOv2 특징을 코드북 차원으로 정렬하는 선형 레이어
         self.linear_align = nn.Linear(dino_dim, codebook_dim)
@@ -101,7 +101,7 @@ class VQGANDecoderWithCrossAttention(nn.Module):
         self.linear_align.train()
 
 
-    def _load_vqgan(self, config_path, ckpt_path):
+    def _load_vqgan(self, config, ckpt_path):
         """YAML 설정 파일과 체크포인트로부터 VQGAN 모델을 로드하는 헬퍼 함수"""
         config = OmegaConf.load(config_path)
         model = VQModel(**config.model.params)
@@ -174,8 +174,8 @@ if __name__ == '__main__':
     # ImageNet으로 사전학습된 VQGAN f16 모델의 경로
     # 이 파일들은 taming-transformers 레포지토리에서 다운로드 받아야 합니다.
     # https://omoro.com/models/
-    VQGAN_CONFIG_PATH = "./logs/vqgan_imagenet_f16_16384/configs/model.yaml"
-    VQGAN_CKPT_PATH = "./logs/vqgan_imagenet_f16_16384/checkpoints/last.ckpt"
+    VQGAN_CONFIG_PATH = "./logs/vqgan_imagenet_f16_1024/configs/model.yaml"
+    VQGAN_CKPT_PATH = "./logs/vqgan_imagenet_f16_1024/checkpoints/last.ckpt"
 
     try:
         # 모델 인스턴스화
